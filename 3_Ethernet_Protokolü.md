@@ -104,8 +104,6 @@ Ethernet yıllar içinde gelişerek farklı hız ve ortam seçenekleriyle birço
 | CRC | 4 byte’lık CRC değeri |
 
 
-Tabii! Aşağıda **MAC adresleme (Media Access Control Addressing)** hakkında detaylı ve öğretici bir makale bulacaksın. Bu makale, Cisco CCNA düzeyinde hazırlanmış olup ağ temelleriyle ilgilenen herkes için uygundur.
-
 
 ## MAC Adresleme 
 
