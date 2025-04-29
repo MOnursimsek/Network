@@ -157,7 +157,6 @@ Bir MAC adresi:
 - Son bit **1** ise multicast olabilir.
 
 
-
 ## CSMA/CD Mekanizması
 
 **CSMA/CD (Carrier Sense Multiple Access with Collision Detection)**, Ethernet’in eski yarı-duplex ortamlarda çakışmaları önlemek için kullandığı yöntemdir.
