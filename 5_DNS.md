@@ -24,7 +24,7 @@ Bir web sitesine `www.google.com` yazarak eriştiğinizde, bu alan adı aslında
 4. **Kolaylık ve esneklik sağlar:**  
    Bir web sitesinin IP adresi değişse bile, DNS kaydı güncellendiğinde kullanıcılar aynı alan adını kullanarak yeni IP adresine ulaşabilir.
 
-##  **DNS Bileşenleri Ayrıntılı Açıklama**
+##  **DNS Bileşenleri **
 
 ### 1.  **DNS Resolver (Çözücü / Recursive Resolver)**
 
