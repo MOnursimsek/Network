@@ -1455,6 +1455,400 @@ Switch# show class-map
 Switch# show policy-map
 ```
 
+
+## **VTP Protokolü**
+
+VTP (VLAN Trunking Protocol), Cisco tarafından geliştirilen bir protokoldür ve aynı VTP domain'ine (etki alanına) ait switch’ler arasında VLAN bilgilerinin senkronize edilmesini sağlar. Yani, bir ağ yöneticisi bir switch üzerinde VLAN oluşturduğunda, bu VLAN bilgileri diğer switch’lere otomatik olarak iletilir. Bu sayede ağ yöneticisinin her bir switch üzerinde manuel olarak VLAN tanımlaması yapmasına gerek kalmaz.
+
+VTP, sadece Cisco switch’lerde çalışan bir protokoldür ve trunk bağlantılar üzerinden çalışır. VLAN bilgilerinin paylaşımı, VTP mesajları (reklamlar) aracılığıyla yapılır ve bu mesajlar belirli aralıklarla gönderilir.
+
+
+### **VTP'nin Amacı ve Önemi**
+
+VTP’nin temel amacı, büyük ağlarda VLAN yönetimini merkezi hâle getirerek kolaylaştırmaktır. VLAN konfigürasyonlarının manuel olarak her switch üzerinde tekrar tekrar yapılması zaman alıcı ve hata yapmaya açık bir işlemdir. VTP sayesinde bu süreç otomatik hâle gelir.
+
+**Önemi şu şekilde özetlenebilir:**
+
+* **Merkezi Yönetim Sağlar:** VLAN’lar tek bir switch’te tanımlandığında, otomatik olarak diğer switch’lere yayılır.
+* **Zaman Kazandırır:** Ağ büyüdükçe VLAN’ların manuel olarak yapılandırılması zahmetli olur; VTP bu işlemi kolaylaştırır.
+* **Tutarlılık Sağlar:** VLAN adları, numaraları ve konfigürasyonları ağ genelinde senkronize kalır.
+* **Hata Riskini Azaltır:** Manuel yapılan yanlış VLAN tanımlamaları veya eksik konfigürasyonlar minimize edilir.
+
+Ancak, dikkat edilmesi gereken önemli bir nokta vardır: Yanlış yapılandırılmış bir VTP sunucusu (server mode’daki switch), tüm ağdaki VLAN yapılandırmalarını silebilir. Bu nedenle VTP yapılandırılırken çok dikkatli olunmalıdır.
+
+
+
+### **VTP Nasıl Çalışır?**
+
+VTP, switch’ler arasında VLAN bilgilerini paylaşmak için trunk bağlantılarını kullanır. Bu protokol, her switch’in bir **VTP domain** içinde olmasını gerektirir. Aynı domain ismine sahip switch’ler arasında bilgi alışverişi yapılabilir.
+
+**Çalışma mekanizması:**
+
+* Switch’ler birbirleriyle VTP mesajları (advertisements) göndererek VLAN bilgilerini paylaşır.
+* Her mesajda **Configuration Revision Number (Konfigürasyon Sürüm Numarası)** bulunur. Bu numara, VLAN bilgilerinin güncelliğini gösterir.
+* Bir switch, gelen mesajın sürüm numarası kendi bilgilerinden daha yüksekse, VLAN veritabanını günceller.
+* VLAN bilgileri **VLAN.dat** adlı bir dosyada NVRAM üzerinde saklanır.
+
+VTP, **IEEE 802.1Q** veya **ISL** trunking protokolleriyle çalışır. Trunk bağlantısı yoksa VTP mesajları iletilemez.
+
+### **VTP Modları**
+
+VTP’nin işleyişinde her switch, belirli bir **mod** içinde çalışır. Bu modlar, VLAN bilgilerinin nasıl işlendiğini ve iletildiğini belirler. Aşağıda üç modun detayları açıklanmıştır:
+
+#### **1. Server Mode (Sunucu Modu)**
+
+* **Varsayılan moddur.**
+* VLAN’lar oluşturulabilir, silinebilir ve düzenlenebilir.
+* Yapılan değişiklikler tüm VTP domain’ine yayılır.
+* VLAN bilgileri hem RAM’de hem de **vlan.dat** dosyasında (NVRAM’de) saklanır.
+* Diğer client ve server modundaki switch’lere VTP mesajları gönderir.
+
+> **Örnek kullanım durumu:** Ağ yöneticisinin VLAN'ları merkezi olarak yönetmek istediği ana switch (örneğin Core Switch) bu modda çalışır.
+
+#### **2. Client Mode (İstemci Modu)**
+
+* VLAN oluşturma, silme veya değiştirme işlemleri **yapılamaz**.
+* Server'dan gelen VLAN bilgilerini alır ve uygular.
+* VLAN bilgilerini **kendisi yaymaz**, sadece alır.
+* VLAN bilgileri sadece RAM’de tutulur; switch yeniden başlatıldığında sunucudan tekrar alınır.
+* Server’dan gelen konfigürasyonlara tamamen bağlıdır.
+
+> **Örnek kullanım durumu:** Uç switch’ler veya erişim katmanındaki switch’ler client olarak yapılandırılarak merkezi VLAN yönetimine tabi tutulur.
+
+#### **3. Transparent Mode (Şeffaf Mod)**
+
+* Switch, kendi yerel VLAN veritabanını yönetebilir (VLAN oluşturabilir, silebilir).
+* Ancak bu VLAN bilgileri VTP mesajı olarak başka switch’lere **yayılmaz**.
+* Aynı şekilde, dışarıdan gelen VTP mesajlarını **uygulamaz**.
+* Gelen VTP mesajlarını **iletebilir** (forward) – bu nedenle trunk bağlantılar üzerinde köprü görevi görebilir.
+* VLAN bilgileri hem RAM’de hem de NVRAM’de saklanır.
+
+> **Örnek kullanım durumu:** Test ortamındaki switch’ler ya da kritik VLAN bilgileri etkilenmeden kendi VLAN yapılandırmasına sahip olması gereken switch’ler bu modda çalıştırılır.
+
+### **VTP Versiyonları**
+
+Cisco tarafından geliştirilen VTP protokolünün 3 farklı versiyonu bulunmaktadır:
+
+###  **VTP Version 1**
+
+#### Temel Özellikler:
+
+* İlk çıkan ve en yaygın kullanılan versiyondur.
+* VLAN bilgilerini (VLAN ID ve VLAN isimleri) VTP domain içindeki diğer switch'lere iletir.
+* Sadece **normal range VLAN’ları (1-1005)** destekler.
+* VLAN verilerini **trunk portlar** üzerinden paylaşır.
+* VLAN silme işlemleri desteklenir.
+* VTP domain adı, mod, configuration revision number gibi temel parametrelere dayanır.
+
+#### Sınırlamaları:
+
+* **Extended range VLAN'lar (1006-4094)** desteklenmez.
+* VLAN bilgileri sadece **VLAN.dat** dosyasına kaydedilir.
+* VLAN iletiminde VTP password şifrelenmeden taşınır (güvenlik açığı olabilir).
+
+### VTP Version 2
+
+#### Ekstra Özellikler:
+
+* **Version 1 ile geriye dönük uyumludur.**
+* **Token Ring VLAN’larını destekler.**
+* Transparent modda çalışan bir switch, aldığı VTP mesajlarını **diğer switch’lere iletebilir.** (Version 1’de iletmez)
+* VLAN bilgileri aynı şekilde trunk portlardan iletilir.
+
+#### Avantajları:
+
+* Ağda farklı VTP versiyonları olan switch'ler varsa tercih edilir (örneğin bazıları V1, bazıları V2).
+* Version 1’den daha esnek bir yapı sunar.
+
+#### Sınırlamaları:
+
+* Hâlâ **extended VLAN desteği yoktur.**
+* VTP iletimindeki güvenlik eksiklikleri devam eder.
+
+### VTP Version 3
+
+#### Gelişmiş Özellikler:
+
+* **Extended VLAN’lar (1006-4094)** tam desteklenir.
+* Sadece VLAN değil, aynı zamanda **Private VLAN (PVLAN)**, MST (Multiple Spanning Tree) ve daha fazlasını senkronize edebilir.
+* VTP şifresi şifreli olarak taşınır (MD5 hash ile).
+* Yöneticiler için **authentication ve yetkilendirme** daha güçlüdür.
+* Konfigürasyon koruması sağlar: sadece **primary server** olan switch, yapılandırma değişikliği yapabilir.
+* Transparent modda olan switch’ler bile **version 3 ile yapılandırma güncellemeleri yapabilir.**
+* **VTP Off** modu tanıtılmıştır (VTP’yi tamamen devre dışı bırakmak mümkündür).
+
+#### Avantajları:
+
+* Geniş ağlarda daha güvenli ve esnek bir yönetim sağlar.
+* VTP protokolüne özel yeni yönetim katmanı ile merkezi VLAN denetimi gelişmiştir.
+
+
+### **VTP Yapılandırması**
+
+VTP yapılandırması, switch üzerinde yapılması gereken birkaç temel adımı içerir. Yapılandırmanın amacı, switch’in hangi modda çalışacağını belirlemek, doğru VTP domain’ine dahil etmek ve VLAN bilgilerinin paylaşımını sağlamaktır.
+
+Aşağıda adım adım VTP yapılandırması açıklanmıştır:
+
+#### **1. VTP Domain Adını Belirleme**
+
+Tüm switch’lerin aynı VTP domain adına sahip olması gerekir:
+
+```bash
+Switch(config)# vtp domain CCNA
+```
+
+> Not: VTP domain adı büyük-küçük harfe duyarlıdır. Switch’lerin birbirini tanıması için adın **birebir aynı** olması gerekir.
+
+#### **2. VTP Modunu Belirleme**
+
+Switch’in çalışma modunu aşağıdaki komutla belirleyebilirsiniz:
+
+```bash
+Switch(config)# vtp mode server
+Switch(config)# vtp mode client
+Switch(config)# vtp mode transparent
+```
+
+> Varsayılan mod “server”dır. Ancak ağın genel tasarımına göre her switch’e uygun mod atanmalıdır.
+
+#### **3. VTP Sürümünü Ayarlama (Opsiyonel)**
+
+VTP’nin üç sürümü vardır: **v1, v2 ve v3**. Cisco switch’lerde genellikle v2 kullanılır. VTP v3, özel VLAN’lar (extended VLANs) ve MST desteği gibi gelişmiş özellikler sunar.
+
+```bash
+Switch(config)# vtp version 2
+```
+
+#### **4. (Opsiyonel) VTP Şifresi Ayarlama**
+
+Güvenliği artırmak için domain içindeki switch’lerin aynı şifreye sahip olması gerekir:
+
+```bash
+Switch(config)# vtp password Cisco123
+```
+
+> VTP mesajları bu şifre ile doğrulanır. Şifre eşleşmezse VLAN verileri alınmaz.
+
+#### **5. VLAN Bilgilerinin Görüntülenmesi**
+
+VTP bilgilerini kontrol etmek için aşağıdaki komut kullanılır:
+
+```bash
+Switch# show vtp status
+```
+
+Bu komut ile aşağıdaki bilgileri görebilirsiniz:
+
+* VTP Domain Name
+* VTP Mode
+* VTP Version
+* Configuration Revision Number
+* Number of Existing VLANs
+
+#### **6. VLAN Oluşturma (Yalnızca Server ve Transparent Modda)**
+
+```bash
+Switch(config)# vlan 10
+Switch(config-vlan)# name SALES
+```
+
+* Eğer switch **server** modundaysa, bu VLAN diğer switch’lere yayılır.
+* Eğer **transparent** modundaysa VLAN sadece yerel olarak saklanır.
+* **Client** modundaysa bu komut çalışmaz, hata verir.
+
+### **VTP ile İlgili Yaygın Hatalar ve Sorun Giderme**
+
+#### **Yaygın Hatalar:**
+
+1. **Yanlış Domain Adı:**
+   Switch’lerin VTP domain isimleri uyuşmazsa, VLAN bilgisi paylaşımı olmaz.
+
+2. **VTP Şifresi Eksik veya Hatalı:**
+   VTP şifresi tanımlıysa tüm switch’lerde aynı şifre girilmelidir. Aksi halde switch, VLAN verilerini reddeder.
+
+3. **Trunk Port Eksikliği:**
+   İki switch arasında trunk bağlantısı yoksa VTP mesajları iletilemez, VLAN bilgileri senkronize olmaz.
+
+4. **Transparent Moddaki Switch VLAN'ı Yaymaz:**
+   Transparent modda çalışan switch’te VLAN oluşturulsa bile, bu bilgi diğer switch’lere yayılmaz.
+
+5. **Yüksek Revizyon Numaralı Switch’in Ağa Eklenmesi:**
+   İçinde eski veya hatalı VLAN verisi bulunan bir switch, yüksek revizyon numarası ile bağlanırsa, diğer tüm switch’lerdeki doğru VLAN bilgilerini siler.
+
+
+
+#### **Sorun Giderme Adımları:**
+
+1. **VTP Durumunu Kontrol Et:**
+
+```bash
+Switch# show vtp status
+```
+
+> Domain adı, mod, versiyon ve revizyon numarası gibi bilgileri verir.
+
+
+
+2. **Trunk Bağlantılarını Doğrula:**
+
+```bash
+Switch# show interfaces trunk
+```
+
+> Hangi portların trunk olarak çalıştığını ve hangi VLAN’ları taşıdığını gösterir.
+
+
+
+3. **Şifre Uyuşmazlıklarını Kontrol Et:**
+
+```bash
+Switch(config)# vtp password [parola]
+```
+
+> Tüm switch’lerde aynı şifre tanımlı olmalı.
+
+
+
+4. **Revizyon Numarasını Sıfırlamak İçin:**
+
+* Switch’i **transparent** moda al, VLAN’ları sil, sonra tekrar eski moda döndür:
+
+```bash
+Switch(config)# vtp mode transparent
+Switch# delete flash:vlan.dat
+Switch(config)# vtp mode client
+```
+
+> Bu işlem, revizyon numarasını sıfırlar.
+
+
+
+5. **VLAN’ların Yayıldığını Kontrol Et:**
+
+```bash
+Switch# show vlan brief
+```
+
+> VLAN’lar otomatik olarak görünmüyorsa VTP, trunk veya domain yapılandırmasında sorun olabilir.
+
+### **Packet Tracer ile VTP Uygulaması (Adım Adım Uygulama)**
+
+### Senaryo:
+
+* 3 adet Cisco switch kullanılacak:
+
+  * **SW1** (Server)
+  * **SW2** (Client)
+  * **SW3** (Client)
+
+* SW1 üzerinde VLAN’lar oluşturulacak ve diğer switch’lere otomatik yayılması sağlanacak.
+
+* Switch’ler arasında trunk bağlantıları kurulacak.
+
+* VTP domain adı: **CCNA**
+
+* VTP versiyonu: **2**
+
+* VTP şifresi: **Cisco123**
+
+### Adım 1: Topoloji Kurulumu
+
+Packet Tracer’da aşağıdaki adımları izle:
+
+1. **Üç adet Cisco 2960 switch** ekleyin: SW1, SW2, SW3.
+2. SW1 ↔ SW2 ve SW1 ↔ SW3 arasında **FastEthernet portlarıyla bağlantı** kurun.
+3. Kabloları bağladıktan sonra tüm bağlantıları **trunk port** yapacağız.
+
+### Adım 2: Trunk Portlarının Yapılandırılması
+
+Her switch için bağlantı noktalarını trunk moda alın:
+
+Örneğin, SW1'de:
+
+```bash
+Switch> enable
+Switch# configure terminal
+Switch(config)# interface range fa0/1 - 2
+Switch(config-if-range)# switchport mode trunk
+Switch(config-if-range)# exit
+```
+
+SW2 ve SW3'te de trunk portları aynı şekilde yapılandırın (SW2 için fa0/1, SW3 için fa0/1 gibi).
+
+### **Adım 3: VTP Yapılandırması**
+
+#### SW1 (Server):
+
+```bash
+Switch(config)# vtp domain CCNA
+Switch(config)# vtp mode server
+Switch(config)# vtp version 2
+Switch(config)# vtp password Cisco123
+```
+
+#### SW2 (Client):
+
+```bash
+Switch(config)# vtp domain CCNA
+Switch(config)# vtp mode client
+Switch(config)# vtp version 2
+Switch(config)# vtp password Cisco123
+```
+
+#### SW3 (Client):
+
+```bash
+Switch(config)# vtp domain CCNA
+Switch(config)# vtp mode client
+Switch(config)# vtp version 2
+Switch(config)# vtp password Cisco123
+```
+
+> Not: VTP domain adı ve şifre tüm switch’lerde **birebir aynı** olmalıdır. Büyük/küçük harf duyarlıdır.
+
+### Adım 4: VLAN’ların Oluşturulması (Sadece SW1'de)
+
+```bash
+Switch(config)# vlan 10
+Switch(config-vlan)# name SALES
+Switch(config)# vlan 20
+Switch(config-vlan)# name HR
+Switch(config)# vlan 30
+Switch(config-vlan)# name IT
+```
+
+> VTP server olan SW1'de tanımlanan bu VLAN'lar, trunk portlar üzerinden SW2 ve SW3'e otomatik yayılacaktır.
+
+### Adım 5: VLAN Yayılımını Kontrol Etme
+
+SW2 ve SW3’te VLAN’ların ulaştığını kontrol edin:
+
+```bash
+Switch# show vlan brief
+```
+
+> VLAN 10, 20 ve 30’un otomatik olarak geldiğini göreceksiniz. Ayrıca:
+
+```bash
+Switch# show vtp status
+```
+
+> Bu komutla VTP domain adı, mod, versiyon ve **Configuration Revision Number** gibi bilgileri görüntüleyebilirsiniz.
+
+### Adım 6: VTP Yayılımının Testi
+
+1. SW2 veya SW3’te `show vlan brief` komutu ile VLAN’ların listelendiğini görüyorsanız VTP başarılı çalışıyor demektir.
+2. SW1'de yeni bir VLAN daha oluşturun:
+
+```bash
+Switch(config)# vlan 40
+Switch(config-vlan)# name FINANCE
+```
+
+3. Ardından SW2 ve SW3'te tekrar kontrol edin. VLAN 40'ın da listelendiğini göreceksiniz.
+
+
+
 ## Kaynakça
 
 1. [Cisco – Understanding and Configuring VLAN Trunk Protocol (VTP)](https://www.cisco.com/c/en/us/support/docs/lan-switching/vtp/10558-21.html)
